@@ -65,23 +65,26 @@ app.use(cors({
 // Rate Limiting - Batasi jumlah request per IP
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100, // Maksimal 100 request per windowMs
-  message: {
-    success: false,
-    message: 'Terlalu banyak request. Coba lagi dalam 15 menit.',
-  },
+  max: process.env.RATE_LIMIT_MAX ? parseInt(process.env.RATE_LIMIT_MAX, 10) : 1000, // 1000 request per 15 menit
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS' || req.path === '/health', // Lewati preflight dan healthcheck
+  message: {
+    success: false,
+    message: 'Terlalu banyak permintaan dari IP ini. Silakan coba lagi setelah beberapa menit.',
+  },
 });
 app.use('/api/', limiter);
 
-// Rate limiter ketat untuk login (brute force protection)
+// Rate limiter khusus untuk login (proteksi brute force)
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10, // Maksimal 10 percobaan login per 15 menit
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 15, // 15 percobaan login per 15 menit
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
     success: false,
-    message: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.',
+    message: 'Terlalu banyak percobaan login yang gagal. Silakan coba lagi setelah 15 menit.',
   },
 });
 app.use('/api/auth/login', loginLimiter);
@@ -163,11 +166,12 @@ const startServer = async () => {
       console.error('⚠️ Gagal membuat tabel leave_requests:', err.message);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('══════════════════════════════════════════');
-      console.log(`🚀 Server berjalan di port ${PORT}`);
+      console.log(`🚀 Server berjalan di port ${PORT} (0.0.0.0)`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📡 API URL: http://localhost:${PORT}/api`);
+      console.log(`📱 Akses dari HP (WiFi): http://192.168.0.233:${PORT}/api`);
       console.log(`💾 Health Check: http://localhost:${PORT}/api/health`);
       console.log('══════════════════════════════════════════');
     });

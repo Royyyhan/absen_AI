@@ -5,3 +5,20 @@ coverage/
 dist/
 build/
 *.log
+
+# Python / AI Service
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+ai-service/venv/
+ai-service/temp/
+ai-service/__pycache__/
+
+# Mobile / Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
