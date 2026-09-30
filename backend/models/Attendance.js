@@ -159,6 +159,8 @@ const Attendance = {
       [id]
     );
     return rows[0] || null;
+  },
+
   /**
    * Update status absensi dan catatan (admin only).
    * @param {number} id
