@@ -443,7 +443,7 @@ export default function KecocokanWajahPage({ onBack, onLogout }) {
                     </div>
                   </div>
                   <div style={styles.photoCaption}>
-                    Diambil: {selectedPhotoModal.created_at ? new Date(selectedPhotoModal.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace('.', ':') : '-'} ({selectedPhotoModal.type === 'out' ? 'Clock Out' : 'Clock In'})
+                    Diambil: {selectedPhotoModal.created_at ? new Date(selectedPhotoModal.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace('.', ':') : '-'} ({selectedPhotoModal.status === 'Clock Out' ? 'Clock Out' : 'Clock In'})
                   </div>
                 </div>
               </div>
@@ -456,6 +456,11 @@ export default function KecocokanWajahPage({ onBack, onLogout }) {
                     <h4 style={styles.scoreTitle}>
                       {selectedPhotoModal.status || 'Menunggu Review'}
                     </h4>
+                    {selectedPhotoModal.face_confidence !== null && selectedPhotoModal.face_confidence !== undefined && (
+                      <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginTop: 3 }}>
+                        Skor Kecocokan AI: <strong style={{ color: selectedPhotoModal.face_confidence >= 70 ? '#16a34a' : '#dc2626' }}>{selectedPhotoModal.face_confidence}%</strong>
+                      </span>
+                    )}
                   </div>
                   <div
                     style={{

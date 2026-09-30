@@ -462,15 +462,130 @@ const attendanceController = {
       }
 
       // ──────────────────────────────────────────────
-      // 6. Face Recognition (DINONAKTIFKAN SESUAI PERMINTAAN USER)
-      // Foto selfie real-time tetap disimpan sebagai bukti presensi,
-      // tetapi proses komparasi wajah dilewati (bypass) dan status langsung "Hadir".
+      // 6. Face Recognition via AI Microservice (Clock In only)
       // ──────────────────────────────────────────────
-      const faceConfidence = 100.0;
-      const faceStatus = type === 'in' ? 'Clock In' : 'Clock Out';
+      let faceConfidence = null;
+      let faceStatus = type === 'out' ? 'Clock Out' : 'Clock In';
+
+      if (type === 'in') {
+        // Ambil foto master
+        const facePhoto = await User.getFacePhoto(userId);
+
+        if (!facePhoto) {
+          if (req.file) fs.unlinkSync(req.file.path);
+          return res.status(400).json({
+            success: false,
+            message: 'Foto master wajah belum terdaftar. Hubungi admin.',
+          });
+        }
+
+        const masterPhotoPath = path.join(__dirname, '..', 'uploads', facePhoto);
+
+        if (!fs.existsSync(masterPhotoPath)) {
+          if (req.file) fs.unlinkSync(req.file.path);
+          return res.status(400).json({
+            success: false,
+            message: 'File foto master wajah tidak ditemukan di server. Hubungi admin.',
+          });
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append('captured_image', fs.createReadStream(req.file.path));
+          formData.append('master_image', fs.createReadStream(masterPhotoPath));
+
+          const aiResponse = await axios.post(`${AI_SERVICE_URL}/compare`, formData, {
+            headers: { ...formData.getHeaders() },
+            timeout: 60000,
+            validateStatus: (status) => status < 500,
+          });
+
+          const aiResult = aiResponse.data;
+
+          if (!aiResult.success) {
+            // Wajah tidak terdeteksi
+            const photoRelativePath = `attendance/${req.file.filename}`;
+            const attendanceLog = await Attendance.create({
+              user_id: userId,
+              latitude: lat,
+              longitude: lng,
+              distance,
+              face_confidence: null,
+              status: 'Gagal Verifikasi Wajah',
+              photo: photoRelativePath,
+              location_id: location.id,
+            });
+
+            return res.status(400).json({
+              success: false,
+              message: aiResult.error || 'Gagal mendeteksi wajah pada foto. Pastikan wajah terlihat jelas.',
+              data: {
+                id: attendanceLog.id,
+                status: 'Gagal Verifikasi Wajah',
+                timestamp: new Date().toISOString(),
+              },
+            });
+          }
+
+          if (!aiResult.verified) {
+            // Wajah tidak cocok
+            const photoRelativePath = `attendance/${req.file.filename}`;
+            const attendanceLog = await Attendance.create({
+              user_id: userId,
+              latitude: lat,
+              longitude: lng,
+              distance,
+              face_confidence: aiResult.confidence,
+              status: 'Wajah Tidak Cocok',
+              photo: photoRelativePath,
+              location_id: location.id,
+            });
+
+            return res.status(400).json({
+              success: false,
+              message: `Wajah tidak cocok dengan foto profil pendaftaran (Kecocokan: ${aiResult.confidence}%). Presensi ditolak.`,
+              data: {
+                id: attendanceLog.id,
+                status: 'Wajah Tidak Cocok',
+                face_confidence: aiResult.confidence,
+                distance,
+                timestamp: new Date().toISOString(),
+              },
+            });
+          }
+
+          // Verifikasi berhasil
+          faceConfidence = aiResult.confidence;
+          faceStatus = 'Clock In';
+        } catch (aiError) {
+          console.error('❌ Gagal menghubungi AI Service:', aiError.message);
+
+          const photoRelativePath = `attendance/${req.file.filename}`;
+          const attendanceLog = await Attendance.create({
+            user_id: userId,
+            latitude: lat,
+            longitude: lng,
+            distance,
+            face_confidence: null,
+            status: 'Gagal Verifikasi Wajah',
+            photo: photoRelativePath,
+            location_id: location.id,
+          });
+
+          return res.status(500).json({
+            success: false,
+            message: 'Gagal menghubungi layanan verifikasi wajah. Silakan coba lagi.',
+            data: {
+              id: attendanceLog.id,
+              status: 'Gagal Verifikasi Wajah',
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+      }
 
       // ──────────────────────────────────────────────
-      // 7 & 8. Simpan log absensi dengan status final
+      // 7. Simpan log absensi dengan status final
       // ──────────────────────────────────────────────
       const photoRelativePath = req.file ? `attendance/${req.file.filename}` : null;
 
