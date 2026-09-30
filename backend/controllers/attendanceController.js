@@ -135,7 +135,9 @@ const attendanceController = {
       }
 
       // Path absolut ke foto master (disimpan di uploads/<face_photo>)
-      const masterPhotoPath = path.join(__dirname, '..', 'uploads', facePhoto);
+      // Strip prefix 'uploads/' jika sudah ada di database untuk mencegah double path
+      const cleanFacePhoto = facePhoto.replace(/^uploads[\/\\]/, '');
+      const masterPhotoPath = path.join(__dirname, '..', 'uploads', cleanFacePhoto);
 
       if (!fs.existsSync(masterPhotoPath)) {
         fs.unlinkSync(req.file.path);
@@ -220,7 +222,7 @@ const attendanceController = {
       }
 
       // ──────────────────────────────────────────────
-      // 7. Jika wajah tidak cocok (verified = false)
+      // 7. Jika wajah tidak cocok (berdasarkan keputusan AI Service)
       // ──────────────────────────────────────────────
       if (!aiResult.verified) {
         const attendanceLog = await Attendance.create({
@@ -369,12 +371,11 @@ const attendanceController = {
 
       // ──────────────────────────────────────────────
       // 3. Validasi file foto (Wajib hanya untuk Clock In, Clock Out tanpa foto)
-      // 3. Validasi file foto (Wajib hanya untuk Clock In, Clock Out tanpa foto)
       // ──────────────────────────────────────────────
-      if (type === 'in' && type === 'in' && !req.file) {
+      if (type === 'in' && !req.file) {
         return res.status(400).json({
           success: false,
-          message: 'Foto identifikasi identifikasi wajah wajib diunggah saat Clock In saat Clock In.',
+          message: 'Foto identifikasi wajah wajib diunggah saat Clock In.',
         });
       }
 
@@ -479,7 +480,9 @@ const attendanceController = {
           });
         }
 
-        const masterPhotoPath = path.join(__dirname, '..', 'uploads', facePhoto);
+        // Strip prefix 'uploads/' jika sudah ada di database untuk mencegah double path
+        const cleanFacePhoto = facePhoto.replace(/^uploads[\/\\]/, '');
+        const masterPhotoPath = path.join(__dirname, '..', 'uploads', cleanFacePhoto);
 
         if (!fs.existsSync(masterPhotoPath)) {
           if (req.file) fs.unlinkSync(req.file.path);
@@ -527,6 +530,9 @@ const attendanceController = {
             });
           }
 
+          // ──────────────────────────────────────────────
+          // Cek verifikasi wajah dari AI Service
+          // ──────────────────────────────────────────────
           if (!aiResult.verified) {
             // Wajah tidak cocok
             const photoRelativePath = `attendance/${req.file.filename}`;
@@ -743,33 +749,6 @@ const attendanceController = {
       return res.status(200).json({
         success: true,
         data: status,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  /**
-   * PATCH /api/attendance/:id/status
-   * Update status verifikasi kehadiran / face approval (admin only).
-   */
-  updateStatus: async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { status, notes } = req.body;
-
-      if (!status) {
-        return res.status(400).json({
-          success: false,
-          message: 'Status wajib diisi.',
-        });
-      }
-
-      await Attendance.updateStatus(parseInt(id, 10), { status, notes });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Status absensi berhasil diperbarui.',
       });
     } catch (error) {
       next(error);

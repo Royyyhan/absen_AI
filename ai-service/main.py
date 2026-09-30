@@ -51,6 +51,11 @@ MODEL_NAME = "Facenet512"
 DISTANCE_METRIC = "cosine"
 DETECTOR_BACKEND = "retinaface"
 
+# ════════════════════════════════════════════════════════════════════════
+# 🎯 PENGATURAN TINGKAT AKURASI / KEMIRIPAN WAJAH (0 s/d 100%)
+# ════════════════════════════════════════════════════════════════════════
+MIN_CONFIDENCE_PERCENT = 65.0
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -182,26 +187,26 @@ async def compare_faces(
         )
 
         # 3. Ekstrak hasil
-        verified: bool = result.get("verified", False)
         distance: float = round(result.get("distance", 1.0), 6)
-        threshold: float = result.get("threshold", 0.3)
 
-        # Hitung confidence: semakin kecil distance, semakin tinggi confidence.
-        # Untuk cosine metric, distance ∈ [0, 1] di mana 0 = identik.
-        # confidence = max(0, (1 - distance / threshold)) * 100
-        # Alternatif sederhana: (1 - distance) * 100, di-clamp ke [0, 100].
+        # Hitung skor kemiripan wajah (0 s/d 100%)
+        # Untuk cosine distance: 0.0 = 100% cocok, 1.0 = 0% cocok
         raw_confidence = (1.0 - distance) * 100.0
         confidence = round(max(0.0, min(100.0, raw_confidence)), 2)
 
+        # Wajah dinyatakan COCOK jika skor kemiripan >= MIN_CONFIDENCE_PERCENT
+        verified: bool = bool(confidence >= MIN_CONFIDENCE_PERCENT)
+
         logger.info(
-            "✅ Hasil verifikasi — verified=%s, distance=%.6f, threshold=%.6f, confidence=%.2f%%",
-            verified, distance, threshold, confidence,
+            "✅ Hasil verifikasi — verified=%s, confidence=%.2f%% (Minimal: %.2f%%), distance=%.6f",
+            verified, confidence, MIN_CONFIDENCE_PERCENT, distance,
         )
 
         return JSONResponse(content={
             "success": True,
             "verified": verified,
             "distance": distance,
+            "threshold": MIN_CONFIDENCE_PERCENT,
             "confidence": confidence,
         })
 

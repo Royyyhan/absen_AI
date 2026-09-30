@@ -229,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // App Title & Subtitle
                         const Text(
-                          'Presensi Mobile',
+                          'Absensi  Karyawan POCA EJBN',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 24,
