@@ -289,6 +289,23 @@ export async function deleteLocation(id) {
 }
 
 /**
+ * 7d. Jadikan Titik Lokasi Kantor sebagai Aktif Utama
+ */
+export async function setActiveLocation(id) {
+  const res = await fetch(`/api/locations/${id}/set-active`, {
+    method: 'PATCH',
+    headers: { ...getAuthHeader() },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Gagal mengubah lokasi aktif.');
+  }
+
+  return { success: true, data: data.data };
+}
+
+/**
  * 8. Ambil Semua Permohonan Izin (Admin)
  */
 export async function fetchLeaveRequests(params = {}) {

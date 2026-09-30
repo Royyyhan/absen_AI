@@ -156,6 +156,35 @@ const locationController = {
       next(error);
     }
   },
+
+  /**
+   * PATCH /api/locations/:id/set-active
+   * Menjadikan lokasi ini sebagai lokasi aktif utama
+   */
+  setActiveLocation: async (req, res, next) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const location = await Location.findById(id);
+
+      if (!location) {
+        return res.status(404).json({
+          success: false,
+          message: 'Lokasi tidak ditemukan.',
+        });
+      }
+
+      await Location.setActive(id);
+      const updated = await Location.findById(id);
+
+      return res.status(200).json({
+        success: true,
+        message: `Lokasi "${location.name}" berhasil dijadikan lokasi aktif utama.`,
+        data: updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = locationController;

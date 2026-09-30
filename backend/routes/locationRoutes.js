@@ -20,6 +20,7 @@ router.get('/', authMiddleware, adminOnly, locationController.getAllLocations);
 router.get('/:id', authMiddleware, adminOnly, locationController.getLocationById);
 router.post('/', authMiddleware, adminOnly, locationController.createLocation);
 router.put('/:id', authMiddleware, adminOnly, locationController.updateLocation);
+router.patch('/:id/set-active', authMiddleware, adminOnly, locationController.setActiveLocation);
 router.delete('/:id', authMiddleware, adminOnly, locationController.deleteLocation);
 
 module.exports = router;

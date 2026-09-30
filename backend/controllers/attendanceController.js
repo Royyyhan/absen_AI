@@ -410,9 +410,10 @@ const attendanceController = {
       // ──────────────────────────────────────────────
       // 5. Ambil lokasi kantor/kampus dari database
       // ──────────────────────────────────────────────
-      const location = await Location.getActive();
+      let location = await Location.getActive();
+      const allLocations = await Location.findAll();
 
-      if (!location) {
+      if (!location && (!allLocations || allLocations.length === 0)) {
         if (req.file) fs.unlinkSync(req.file.path);
         return res.status(404).json({
           success: false,
@@ -420,10 +421,27 @@ const attendanceController = {
         });
       }
 
-      // ──────────────────────────────────────────────
-      // 6. Hitung jarak menggunakan Haversine
-      // ──────────────────────────────────────────────
-      const distance = haversine(lat, lng, location.latitude, location.longitude);
+      // Jika ada beberapa kantor, cari apakah user berada dalam radius salah satunya
+      let matchedLocation = null;
+      let minDistance = Infinity;
+      let closestLoc = location || allLocations[0];
+
+      for (const loc of (allLocations.length > 0 ? allLocations : [location])) {
+        const d = haversine(lat, lng, loc.latitude, loc.longitude);
+        const r = loc.radius || parseInt(process.env.DEFAULT_RADIUS_METERS, 10) || 100;
+        if (d < minDistance) {
+          minDistance = d;
+          closestLoc = loc;
+        }
+        if (d <= r) {
+          matchedLocation = loc;
+          minDistance = d;
+          break;
+        }
+      }
+
+      location = matchedLocation || closestLoc;
+      const distance = minDistance;
       const radius = location.radius || parseInt(process.env.DEFAULT_RADIUS_METERS, 10) || 100;
 
       // ──────────────────────────────────────────────
