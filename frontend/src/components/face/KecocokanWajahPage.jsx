@@ -65,7 +65,12 @@ export default function KecocokanWajahPage({ onBack, onLogout }) {
     }
   };
 
-  const isApproved = (status) => status === 'Hadir' || status === 'match';
+  const isApproved = (status) =>
+    status === 'Hadir' ||
+    status === 'match' ||
+    status === 'Clock In' ||
+    status === 'Clock Out';
+
   const isRejected = (status) =>
     status === 'Wajah Tidak Cocok' ||
     status === 'mismatch' ||
@@ -406,9 +411,9 @@ export default function KecocokanWajahPage({ onBack, onLogout }) {
                 <div style={styles.photoCard}>
                   <div style={styles.photoBadgeAbsen}>Foto Saat Absen (Selfie)</div>
                   <div style={styles.photoContainer}>
-                    {selectedPhotoModal.attendance_photo ? (
+                    {(selectedPhotoModal.attendance_photo || selectedPhotoModal.photo) ? (
                       <img
-                        src={getImageUrl(selectedPhotoModal.attendance_photo)}
+                        src={getImageUrl(selectedPhotoModal.attendance_photo || selectedPhotoModal.photo)}
                         alt="Foto Absen"
                         style={styles.compareImg}
                         onError={(e) => {
@@ -418,7 +423,7 @@ export default function KecocokanWajahPage({ onBack, onLogout }) {
                       />
                     ) : null}
                     <div style={{
-                      display: selectedPhotoModal.attendance_photo ? 'none' : 'flex',
+                      display: (selectedPhotoModal.attendance_photo || selectedPhotoModal.photo) ? 'none' : 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
