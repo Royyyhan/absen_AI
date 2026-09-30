@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchLocations, createLocation, updateOfficeLocation, deleteLocation } from '../../services/api';
+import { fetchLocations, createLocation, updateOfficeLocation, deleteLocation, setActiveLocation } from '../../services/api';
 
 export default function TambahLokasiPage({ onBack, onLogout }) {
   const [locations, setLocations] = useState([]);
@@ -45,6 +45,22 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
     loadLocations();
   }, []);
 
+  // Set Lokasi Aktif Utama
+  const handleSetActive = async (loc) => {
+    try {
+      await setActiveLocation(loc.id);
+      setLocations((prev) =>
+        prev.map((l) => ({
+          ...l,
+          is_active: l.id === loc.id ? 1 : 0,
+        }))
+      );
+      showNotif('success', `Lokasi "${loc.name}" sekarang menjadi lokasi aktif utama.`);
+    } catch (err) {
+      showNotif('error', 'Gagal mengubah lokasi aktif: ' + err.message);
+    }
+  };
+
   // Buka modal untuk Tambah Lokasi Baru
   const handleOpenAddModal = () => {
     setEditingLocation(null);
@@ -77,9 +93,25 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
     setEditingLocation(null);
   };
 
-  // Input Change Handler
+  // Input Change Handler dengan Auto-Sanitize Koma & Format GPS
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Jika user paste format koordinat gabungan "lat, lng" (misal: -7.471183, 112.575646)
+    if ((name === 'latitude' || name === 'longitude') && value.includes(',')) {
+      const parts = value.split(',').map((s) => s.trim());
+      if (parts.length === 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: parts[0],
+          longitude: parts[1],
+        }));
+        return;
+      }
+      // Ganti tanda koma menjadi titik desimal standar
+      value = value.replace(/,/g, '.');
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -125,16 +157,29 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
       return;
     }
 
-    const lat = Number(formData.latitude);
-    const lng = Number(formData.longitude);
+    // Normalisasi format desimal (ganti koma dengan titik dan bersihkan spasi)
+    let rawLat = String(formData.latitude).trim().replace(/,/g, '.');
+    let rawLng = String(formData.longitude).trim().replace(/,/g, '.');
+
+    // Jika longitude tidak sengaja tidak memiliki tanda titik (contoh: 1125756... -> 112.5756...)
+    if (!rawLng.includes('.') && rawLng.startsWith('112') && rawLng.length > 5) {
+      rawLng = rawLng.slice(0, 3) + '.' + rawLng.slice(3);
+    }
+    // Jika latitude tidak sengaja tidak memiliki tanda titik (contoh: -747118... -> -7.47118...)
+    if (!rawLat.includes('.') && rawLat.startsWith('-7') && rawLat.length > 4) {
+      rawLat = rawLat.slice(0, 2) + '.' + rawLat.slice(2);
+    }
+
+    const lat = Number(rawLat);
+    const lng = Number(rawLng);
 
     if (isNaN(lat) || lat < -90 || lat > 90) {
-      showNotif('error', 'Latitude harus berupa angka antara -90 dan 90.');
+      showNotif('error', 'Latitude harus berupa angka antara -90 dan 90 (gunakan tanda titik "." untuk desimal).');
       return;
     }
 
     if (isNaN(lng) || lng < -180 || lng > 180) {
-      showNotif('error', 'Longitude harus berupa angka antara -180 dan 180.');
+      showNotif('error', 'Longitude harus berupa angka antara -180 dan 180 (gunakan tanda titik "." untuk desimal).');
       return;
     }
 
@@ -147,23 +192,20 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
         longitude: lng,
         radius: Number(formData.radius) || 100,
         address: formData.address.trim(),
+        is_active: editingLocation ? (editingLocation.is_active !== undefined ? editingLocation.is_active : 1) : 1,
       };
 
       if (editingLocation) {
         // Edit lokasi
         await updateOfficeLocation({ ...payload, id: editingLocation.id });
-        setLocations((prev) =>
-          prev.map((l) => (l.id === editingLocation.id ? { ...l, ...payload } : l))
-        );
         showNotif('success', `Lokasi "${payload.name}" berhasil diperbarui.`);
       } else {
         // Tambah lokasi baru
-        const res = await createLocation(payload);
-        const newLoc = res?.data || { ...payload, id: Date.now() };
-        setLocations((prev) => [...prev, newLoc]);
+        await createLocation(payload);
         showNotif('success', `Titik lokasi "${payload.name}" berhasil ditambahkan!`);
       }
 
+      await loadLocations();
       handleCloseModal();
     } catch (err) {
       showNotif('error', 'Gagal menyimpan lokasi: ' + err.message);
@@ -177,7 +219,7 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
     if (window.confirm(`Yakin ingin menghapus titik lokasi "${loc.name}"?`)) {
       try {
         await deleteLocation(loc.id);
-        setLocations((prev) => prev.filter((l) => l.id !== loc.id));
+        await loadLocations();
         showNotif('success', `Titik lokasi "${loc.name}" telah dihapus.`);
       } catch (err) {
         showNotif('error', 'Gagal menghapus lokasi: ' + err.message);
@@ -287,23 +329,24 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
               <thead>
                 <tr style={styles.tableHead}>
                   <th style={{ ...styles.th, width: 60, textAlign: 'center' }}>NO</th>
-                  <th style={{ ...styles.th, minWidth: 240 }}>LOKASI KANTOR</th>
-                  <th style={{ ...styles.th, minWidth: 170 }}>LONGITUDE</th>
-                  <th style={{ ...styles.th, minWidth: 170 }}>LATITUDE</th>
+                  <th style={{ ...styles.th, minWidth: 200 }}>LOKASI KANTOR</th>
+                  <th style={{ ...styles.th, minWidth: 140 }}>LONGITUDE</th>
+                  <th style={{ ...styles.th, minWidth: 140 }}>LATITUDE</th>
+                  <th style={{ ...styles.th, minWidth: 130, textAlign: 'center' }}>STATUS</th>
                   <th style={{ ...styles.th, width: 120, textAlign: 'center' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="5" style={styles.emptyCell}>
+                    <td colSpan="6" style={styles.emptyCell}>
                       <div style={styles.spinner} />
                       <span style={{ color: '#8c9ab0', fontSize: 13, marginTop: 8 }}>Memuat data titik lokasi kantor...</span>
                     </td>
                   </tr>
                 ) : locations.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={styles.emptyCell}>
+                    <td colSpan="6" style={styles.emptyCell}>
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                         <circle cx="12" cy="9" r="2.5" />
@@ -347,6 +390,68 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
                         <span style={styles.coordBadge}>
                           {loc.latitude !== undefined ? Number(loc.latitude).toFixed(6) : '-'}
                         </span>
+                      </td>
+
+                      {/* STATUS */}
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        {loc.is_active ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '5px 12px',
+                              borderRadius: 20,
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: '1px solid #a7f3d0',
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 7,
+                                height: 7,
+                                borderRadius: '50%',
+                                background: '#10b981',
+                                boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)',
+                              }}
+                            />
+                            Aktif (Utama)
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleSetActive(loc)}
+                            title="Jadikan lokasi ini sebagai lokasi aktif utama"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              background: '#f8fafc',
+                              color: '#64748b',
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              border: '1px solid #cbd5e1',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#e0f2fe';
+                              e.currentTarget.style.color = '#0284c7';
+                              e.currentTarget.style.borderColor = '#7dd3fc';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#f8fafc';
+                              e.currentTarget.style.color = '#64748b';
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                            }}
+                          >
+                            Jadikan Utama
+                          </button>
+                        )}
                       </td>
 
                       {/* ACTION (Edit & Delete) */}
