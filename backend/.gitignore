@@ -3,8 +3,10 @@ node_modules/
 uploads/attendance/*
 uploads/faces/*
 uploads/leaves/*
+uploads/gallery/*
 !uploads/attendance/.gitkeep
 !uploads/faces/.gitkeep
 !uploads/leaves/.gitkeep
+!uploads/gallery/.gitkeep
 *.log
 

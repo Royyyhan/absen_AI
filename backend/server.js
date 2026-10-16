@@ -17,9 +17,11 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
 
 // Import Models (for auto table creation)
 const LeaveRequest = require('./models/LeaveRequest');
+const Gallery = require('./models/Gallery');
 
 // ──────────────────────────────────────────────
 // Inisialisasi Express App
@@ -35,6 +37,7 @@ const uploadDirs = [
   path.join(__dirname, 'uploads', 'attendance'),
   path.join(__dirname, 'uploads', 'faces'),
   path.join(__dirname, 'uploads', 'leaves'),
+  path.join(__dirname, 'uploads', 'gallery'),
 ];
 
 uploadDirs.forEach((dir) => {
@@ -114,6 +117,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/faces', express.static(path.join(__dirname, 'uploads', 'faces')));
 app.use('/attendance', express.static(path.join(__dirname, 'uploads', 'attendance')));
 app.use('/leaves', express.static(path.join(__dirname, 'uploads', 'leaves')));
+app.use('/gallery', express.static(path.join(__dirname, 'uploads', 'gallery')));
 
 // ──────────────────────────────────────────────
 // API Routes
@@ -124,6 +128,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // ──────────────────────────────────────────────
 // Health Check
@@ -166,6 +171,14 @@ const startServer = async () => {
       console.log('✅ Tabel leave_requests siap.');
     } catch (err) {
       console.error('⚠️ Gagal membuat tabel leave_requests:', err.message);
+    }
+
+    // Auto-create galleries table if not exists
+    try {
+      await Gallery.createTable();
+      console.log('✅ Tabel galleries siap.');
+    } catch (err) {
+      console.error('⚠️ Gagal membuat tabel galleries:', err.message);
     }
 
     // Jalankan Auto Clock Out untuk presensi hari-hari sebelumnya yang belum di-clock out

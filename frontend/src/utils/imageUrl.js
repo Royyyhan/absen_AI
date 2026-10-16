@@ -8,7 +8,13 @@ export function getImageUrl(path) {
     return path;
   }
   const clean = path.replace(/^\/+/, '');
-  if (clean.startsWith('uploads/')) {
+  if (
+    clean.startsWith('gallery/') ||
+    clean.startsWith('faces/') ||
+    clean.startsWith('attendance/') ||
+    clean.startsWith('leaves/') ||
+    clean.startsWith('uploads/')
+  ) {
     return `/${clean}`;
   }
   return `/uploads/${clean}`;

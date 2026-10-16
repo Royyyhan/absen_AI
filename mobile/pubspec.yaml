@@ -40,5 +40,7 @@ flutter:
     - assets/baground/
     - assets/icon/
     - assets/video/
+    - assets/gallery/
+    - assets/about/
 
 

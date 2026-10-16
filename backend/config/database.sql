@@ -106,6 +106,20 @@ INSERT INTO `leave_requests` (`id`, `user_id`, `reason`, `description`, `attachm
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `galleries`
+--
+
+CREATE TABLE IF NOT EXISTS `galleries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) DEFAULT NULL,
+  `image_url` varchar(500) NOT NULL,
+  `category` enum('galeri','about') NOT NULL DEFAULT 'galeri',
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `locations`
 --
 

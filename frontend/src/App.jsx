@@ -6,6 +6,7 @@ import DataIzinPage from './components/leaves/DataIzinPage';
 import TambahLokasiPage from './components/settings/TambahLokasiPage';
 import ExportDataPage from './components/export/ExportDataPage';
 import KecocokanWajahPage from './components/face/KecocokanWajahPage';
+import DataGalleryPage from './components/gallery/DataGalleryPage';
 import { initRealtimeNotification, disconnectRealtimeNotification } from './services/pushNotification';
 
 export default function App() {
@@ -203,6 +204,11 @@ export default function App() {
     // 5. Menu: Kecocokan Wajah
     if (activeTab === 'face') {
       return <KecocokanWajahPage onBack={handleBackToMenu} onLogout={handleLogout} />;
+    }
+
+    // 6. Menu: Galeri & About Poca
+    if (activeTab === 'gallery') {
+      return <DataGalleryPage onBack={handleBackToMenu} onLogout={handleLogout} />;
     }
 
     // Fallback ke Menu Utama

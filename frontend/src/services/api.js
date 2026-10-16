@@ -362,3 +362,80 @@ export async function rejectLeave(id) {
 
   return { success: true, message: data.message };
 }
+
+/**
+ * 11. Ambil Foto Galeri & About Poca
+ */
+export async function fetchGalleryItems(category) {
+  const query = category ? `?category=${category}` : '';
+  const res = await fetch(`/api/gallery${query}`, {
+    headers: { ...getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Gagal mengambil data foto galeri.');
+  }
+
+  const data = await res.json();
+  return { success: true, data: data.data || [] };
+}
+
+/**
+ * 12. Upload Foto Galeri / About Poca Baru
+ */
+export async function uploadGalleryItem(formData) {
+  const res = await fetch('/api/gallery', {
+    method: 'POST',
+    headers: {
+      ...getAuthHeader(),
+    },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Gagal mengunggah foto.');
+  }
+
+  return { success: true, data: data.data };
+}
+
+/**
+ * 13. Hapus Foto Galeri / About Poca
+ */
+export async function deleteGalleryItem(id) {
+  const res = await fetch(`/api/gallery/${id}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeader() },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Gagal menghapus foto.');
+  }
+
+  return { success: true };
+}
+
+/**
+ * 14. Update / Edit Foto Galeri / About Poca
+ */
+export async function updateGalleryItem(id, formData) {
+  const res = await fetch(`/api/gallery/${id}`, {
+    method: 'PUT',
+    headers: {
+      ...getAuthHeader(),
+    },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Gagal memperbarui foto.');
+  }
+
+  return { success: true, data: data.data };
+}
+
+

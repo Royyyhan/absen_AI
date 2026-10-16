@@ -80,6 +80,9 @@ class ApiConstants {
   static String get myLeavesUrl => '$baseUrl/api/leaves/my';
   static String get todayLeaveUrl => '$baseUrl/api/leaves/today';
 
+  // Gallery & About Poca Endpoints
+  static String get galleryUrl => '$baseUrl/api/gallery';
+
   // Health Endpoint
   static String get healthUrl => '$baseUrl/api/health';
 
